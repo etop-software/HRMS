@@ -156,7 +156,7 @@ export default function AskHRChat({ isFloating = false }) {
         .chat-container {
          max-width: ${isFloating ? '1200px' : '1200px'};
           margin: ${isFloating ? '0' : '0 auto'};
-          height: ${isFloating ? '100%' : '100vh'};
+          height: ${isFloating ? '100vh' : '100vh'};
           display: flex;
           flex-direction: column;
           height: 100vh;
@@ -207,15 +207,17 @@ export default function AskHRChat({ isFloating = false }) {
           font-size: 0.95rem;
         }
 
-        .messages-container {
-          flex: 1;
-          overflow-y: auto;
-          padding: 1.5rem;
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-          background-color: #f9fafb;
-        }
+       .messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background-color: #f9fafb;
+  min-height: 0; /* This is important for flex containers */
+  max-height: calc(100% - 140px); /* Adjust based on your header and input heights */
+}
 
         .empty-state {
           display: flex;

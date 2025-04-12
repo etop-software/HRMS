@@ -72,7 +72,8 @@ export default function FloatingChatbot() {
           height: 700px;
           max-height: 85vh;
           border-radius: 12px;
-          overflow: hidden;
+          overflow: y-scroll;
+          background-color: white;
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
           z-index: 999;
           animation: slideIn 0.3s ease-out;
