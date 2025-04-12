@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-export default function AskHRChat() {
+export default function AskHRChat({ isFloating = false }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -154,8 +154,9 @@ export default function AskHRChat() {
 
       <style jsx>{`
         .chat-container {
-          max-width: 1200px;
-          margin: 0 auto;
+         max-width: ${isFloating ? '1200px' : '1200px'};
+          margin: ${isFloating ? '0' : '0 auto'};
+          height: ${isFloating ? '100%' : '100vh'};
           display: flex;
           flex-direction: column;
           height: 100vh;

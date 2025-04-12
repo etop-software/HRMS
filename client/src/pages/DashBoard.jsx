@@ -8,6 +8,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { Link } from "react-router-dom";
+import FloatingChatbot from '../components/FloatingChatbot';
 
 ChartJS.register(ArcElement, Tooltip, Legend,ArcElement, ChartDataLabels);
 
@@ -275,8 +276,9 @@ data={{
   </div>
 </div>
 
-
+<FloatingChatbot />
     </div>
+    
   );
 }
 
