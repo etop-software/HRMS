@@ -1,10 +1,12 @@
 const axios = require('axios');
 const pool = require('../config/Pdb');
+require('dotenv').config({ path: '../.env' });
 
-const GEMINI_API_KEY = 'AIzaSyBOH4g_3SJgDhGOXDkDOsGqQImrrICLwQI'; // Replace with your actual API key
+const GEMINI_API_KEY = process.env.GOOGLE_API_KEY; // Replace with your actual API key
 
 exports.askHR = async (req, res) => {
   const { question } = req.body;
+ 
 
   const prompt = `
   You are an assistant that generates safe SELECT-only PostgreSQL queries for an HR management system.
