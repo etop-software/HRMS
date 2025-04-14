@@ -85,7 +85,7 @@ export default function AskHRChat({ isFloating = false }) {
       <div className="messages-container">
         {messages.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">💬</div>
+            <div className="empty-icon">😎</div>
             <h3>How can I help you today?</h3>
             <p>Ask me about company policies, benefits, leave, or any HR-related questions</p>
           </div>
@@ -96,7 +96,7 @@ export default function AskHRChat({ isFloating = false }) {
               className={`message ${msg.role === 'user' ? 'user-message' : 'assistant-message'}`}
             >
               <div className="message-avatar">
-                {msg.role === 'user' ? '👤' : '👩‍💼'}
+                {msg.role === 'user' ? '🥷🏼' : '🧕🏼'}
               </div>
               <div className="message-content">
                 <div className="message-header">

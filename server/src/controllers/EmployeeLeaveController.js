@@ -44,7 +44,7 @@ const assignLeaveToEmployees = async (req, res) => {
       // Assign the new leave entry
       const result = await pool.query(
         `INSERT INTO employee_leaves (employee_id, leave_type_id, leave_start_date, leave_end_date, assigned_date, status)
-         VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, 'assigned') RETURNING *`,
+         VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, 'approved') RETURNING *`,
         [employeeId, leaveId, leave_start_date, leave_end_date]
       );
 
