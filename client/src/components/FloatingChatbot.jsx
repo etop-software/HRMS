@@ -28,7 +28,7 @@ export default function FloatingChatbot() {
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? "Close HR Assistant" : "Open HR Assistant"}
       >
-        {isOpen ? '✕' : '💬'}
+        {isOpen ? '✕' : '🤖'}
       </button>
 
       {/* Floating chat container */}

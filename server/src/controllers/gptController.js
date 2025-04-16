@@ -23,6 +23,7 @@ exports.askHR = async (req, res) => {
   -- employee_leaves(id, employee_id, leave_type_id, leave_start_date, leave_end_date, assigned_date, status)
   
   ⚠️ Notes & Constraints:
+  - strict If the user question is not related to HR data or cannot be answered using the database schema provided, respond with: "Please ask a question related to the HR management system data. I can help with queries about employees, attendance, leaves, departments, designations, shifts, holidays, and related HR information."
    - Always use ILIKE with wildcards for name matching
   - Only use SELECT queries. Never use INSERT, UPDATE, DELETE, DROP, or any DDL.
    - When displaying boolean-like results, format as "Yes" or "No" using CASE statements

@@ -6,43 +6,77 @@ export default function AskHRChat({ isFloating = false }) {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
+  const suggestions = [
+    '📅 Who is absent today?',
+    '🏖️ Who is on leave today?',
+    '📊 View team leave summary',
+    '📆 Review upcoming holidays',
+    '📈 Total working hrs of employees yesterday'
+  ];
+
+  const getFollowUps = (text) => {
+    const normalized = text.toLowerCase();
+
+
+    if (normalized.includes('absent')) {
+      return ['📋 Show all absent employees today', 'Who was absent last week?', '👥 Show absence by department today'];
+    }
+
+    if (normalized.includes('leave')) {
+      return ['📊 Show leave summary for all teams', '📋 Export leave report','📝 View pending leave approvals'];
+    }
+
+    if (normalized.includes('holiday')) {
+      return ['📆 Show me the holiday calendar.', '📅 Is tomorrow a holiday?', '🕊️ How many holidays this year?'];
+    }
+
+    // if (normalized.includes('policy')) {
+    //   return ['📘 What’s the dress code policy?', '⏰ What are our working hours?', '🏠 Can I work from home?'];
+    // }
+
+    // return ['🤔 Need help with something else?', '💬 Want to ask about policies or leaves?', '🧭 Not sure what to ask? I can suggest!'];
+  };
+
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSubmit = async () => {
-    if (!input.trim()) return;
+  const handleSubmit = async (customInput = null) => {
+    const question = customInput || input;
+    if (!question.trim()) return;
+  
     setLoading(true);
-
-    const userMessage = { role: 'user', content: input };
+    const userMessage = { role: 'user', content: question };
     setMessages(prev => [...prev, userMessage]);
-
+  
     try {
       const res = await fetch('http://localhost:3000/api/gpt/ask-hr', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ question: input })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question })
       });
-
+  
       const data = await res.json();
-
+  
+      // Use the question itself to determine follow-ups
+      const followUps = getFollowUps(question);
       const assistantMessage = {
         role: 'assistant',
         content: data.data || [],
-        isTable: true
+        isTable: true,
+        followUps
       };
-
+  
       setMessages(prev => [...prev, assistantMessage]);
     } catch (err) {
       setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}` }]);
     }
-
+  
     setInput('');
     setLoading(false);
   };
+  
 
   const handleClearChat = () => {
     setMessages([]);
@@ -80,14 +114,26 @@ export default function AskHRChat({ isFloating = false }) {
 
   return (
     <div className="chat-container">
-    
-
       <div className="messages-container">
         {messages.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">😎</div>
+            <div className="empty-icon">💬</div>
             <h3>How can I help you today?</h3>
             <p>Ask me about company policies, benefits, leave, or any HR-related questions</p>
+            <div className="suggestions">
+              {suggestions.map((text, idx) => (
+                <button
+                  key={idx}
+                  className="suggestion-button"
+                  onClick={() => {
+                    setInput(text);
+                    handleSubmit(text);
+                  }}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           messages.map((msg, idx) => (
@@ -106,6 +152,15 @@ export default function AskHRChat({ isFloating = false }) {
                 <div className="message-body">
                   {msg.isTable ? renderTable(msg.content) : msg.content}
                 </div>
+                 {msg.role === 'assistant' && msg.followUps && (
+                  <div className="follow-up-questions">
+                    {msg.followUps.map((q, i) => (
+                      <button key={i} className="follow-up-button" onClick={() => setInput(q)}>
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))
@@ -123,10 +178,9 @@ export default function AskHRChat({ isFloating = false }) {
           disabled={loading}
           className="chat-input"
         />
-      
-        
+
         <button
-          onClick={handleSubmit}
+          onClick={() => handleSubmit()}
           disabled={loading}
           className="send-button"
           title="Send message"
@@ -134,16 +188,16 @@ export default function AskHRChat({ isFloating = false }) {
           {loading ? (
             <div className="loading-spinner"></div>
           ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="22" y1="2" x2="11" y2="13"></line>
               <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
             </svg>
           )}
         </button>
-          
+
         {messages.length > 0 && (
           <button onClick={handleClearChat} className="clear-button" title="Clear conversation">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 6h18"></path>
               <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
               <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
@@ -154,70 +208,27 @@ export default function AskHRChat({ isFloating = false }) {
 
       <style jsx>{`
         .chat-container {
-         max-width: ${isFloating ? '1200px' : '1200px'};
-          margin: ${isFloating ? '0' : '0 auto'};
-          height: ${isFloating ? '100vh' : '100vh'};
+          max-width: 1200px;
+          margin: 0 auto;
+          height: 100vh;
           display: flex;
           flex-direction: column;
-          height: 100vh;
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-family: 'Inter', sans-serif;
           background-color: #f9fafb;
           border-radius: 12px;
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
         }
 
-        .chat-header {
+        .messages-container {
+          flex: 1;
+          overflow-y: auto;
           padding: 1.5rem;
-          background: linear-gradient(135deg, #1e40af, #2563eb);
-          color: white;
-          border-radius: 12px 12px 0 0;
-          text-align: center;
-        }
-
-        .header-content {
           display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.75rem;
+          flex-direction: column;
+          gap: 1rem;
+          background-color: #f9fafb;
+          min-height: 0;
         }
-
-        .logo-container {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 48px;
-          height: 48px;
-          background-color: rgba(255, 255, 255, 0.2);
-          border-radius: 12px;
-        }
-
-        .logo-icon {
-          font-size: 1.75rem;
-        }
-
-        .chat-header h1 {
-          font-size: 1.75rem;
-          font-weight: 700;
-          margin: 0;
-        }
-
-        .header-subtitle {
-          margin-top: 0.5rem;
-          opacity: 0.9;
-          font-size: 0.95rem;
-        }
-
-       .messages-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  background-color: #f9fafb;
-  min-height: 0; /* This is important for flex containers */
-  max-height: calc(100% - 140px); /* Adjust based on your header and input heights */
-}
 
         .empty-state {
           display: flex;
@@ -245,6 +256,56 @@ export default function AskHRChat({ isFloating = false }) {
         .empty-state p {
           max-width: 400px;
           line-height: 1.5;
+        }
+
+        .suggestions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          margin-top: 1rem;
+          justify-content: center;
+        }
+
+         .follow-up-questions {
+          margin-top: 0.75rem;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+
+        .follow-up-button {
+          background-color: #eef2ff;
+          color: #1e3a8a;
+          border: none;
+          border-radius: 9999px;
+          padding: 0.5rem 0.85rem;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .follow-up-button:hover {
+          background-color: #dbeafe;
+        }
+
+        .suggestion-button {
+          padding: 0.5rem 1rem;
+          background-color: #e0e7ff;
+          color: #1e40af;
+          border: none;
+          border-radius: 9999px;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+.suggestion-title {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+        .suggestion-button:hover {
+          background-color: #c7d2fe;
         }
 
         .message {
@@ -310,14 +371,6 @@ export default function AskHRChat({ isFloating = false }) {
           font-size: 0.85rem;
         }
 
-        .user-message .message-header {
-          color: rgba(255, 255, 255, 0.9);
-        }
-
-        .assistant-message .message-header {
-          color: #6b7280;
-        }
-
         .message-sender {
           font-weight: 600;
         }
@@ -361,14 +414,6 @@ export default function AskHRChat({ isFloating = false }) {
           border-bottom: 1px solid #e5e7eb;
         }
 
-        .data-table tr:last-child td {
-          border-bottom: none;
-        }
-
-        .data-table tr:nth-child(even) {
-          background-color: #f9fafb;
-        }
-
         .input-container {
           display: flex;
           gap: 0.75rem;
@@ -385,47 +430,29 @@ export default function AskHRChat({ isFloating = false }) {
           border: 1px solid #e5e7eb;
           font-size: 0.95rem;
           background-color: #f9fafb;
-          transition: all 0.2s;
         }
 
         .chat-input:focus {
           outline: none;
           border-color: #2563eb;
           box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-          background-color: white;
         }
 
+        .send-button,
         .clear-button {
-          width: 44px;
-          height: 44px;
-          border-radius: 50%;
-          background-color: #f3f4f6;
-          color: #6b7280;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: none;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .clear-button:hover {
-          background-color: #e5e7eb;
-          color: #4b5563;
-        }
-
-        .send-button {
           width: 48px;
           height: 48px;
           border-radius: 50%;
-          background-color: #2563eb;
-          color: white;
           display: flex;
           align-items: center;
           justify-content: center;
           border: none;
           cursor: pointer;
-          transition: all 0.2s;
+        }
+
+        .send-button {
+          background-color: #2563eb;
+          color: white;
         }
 
         .send-button:hover {
@@ -440,6 +467,16 @@ export default function AskHRChat({ isFloating = false }) {
         .send-button:disabled {
           background-color: #9ca3af;
           cursor: not-allowed;
+        }
+
+        .clear-button {
+          background-color: #f3f4f6;
+          color: #6b7280;
+        }
+
+        .clear-button:hover {
+          background-color: #e5e7eb;
+          color: #4b5563;
         }
 
         .loading-spinner {
@@ -462,27 +499,11 @@ export default function AskHRChat({ isFloating = false }) {
 
         @media (max-width: 768px) {
           .chat-container {
-            height: 100vh;
             border-radius: 0;
           }
-          
-          .
-          .chat-header {
-            border-radius: 0;
-          }
-          
+
           .message {
             max-width: 90%;
-          }
-          
-          .clear-button {
-            width: 40px;
-            height: 40px;
-          }
-          
-          .send-button {
-            width: 44px;
-            height: 44px;
           }
         }
       `}</style>
