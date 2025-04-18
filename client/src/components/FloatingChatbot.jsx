@@ -41,7 +41,7 @@ export default function FloatingChatbot() {
       <style jsx>{`
         .chat-toggle-btn {
           position: fixed;
-          bottom: 20px;
+          bottom: 60px;
           right: 20px;
           width: 60px;
           height: 60px;

@@ -1,18 +1,49 @@
 import React, { useState, useRef, useEffect } from 'react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable'; // Required for autoTable to work
+
+
+function TypingIndicator() {
+  return (
+    <div className="message assistant-message typing-indicator-container">
+      <div className="message-avatar">🤖</div>
+      <div className="message-content typing-content">
+        <div className="typing-indicator" aria-label="HR Assistant is typing">
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function AskHRChat({ isFloating = false }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showTyping, setShowTyping] = useState(false);
   const messagesEndRef = useRef(null);
 
+  const getLastMonthName = () => {
+    const now = new Date();
+    now.setMonth(now.getMonth() - 1);
+    return now.toLocaleString('default', { month: 'long' });
+  };
+  
+  const lastMonth = getLastMonthName();
+  
   const suggestions = [
     '📅 Who is absent today?',
-    '🏖️ Who is on leave today?',
-    '📊 View team leave summary',
+    '🏖️ Who is on leave yesterday?',
+    '🕝 Who came late today?',
+    '🤒 What is the sick Leave policy?',
+    '📊 Employee List order by department name',
     '📆 Review upcoming holidays',
-    '📈 Total working hrs of employees yesterday'
+    `📈 Total working hours of employees in ${lastMonth} ${new Date().getFullYear()}`
   ];
+  
 
   const getFollowUps = (text) => {
     const normalized = text.toLowerCase();
@@ -23,16 +54,16 @@ export default function AskHRChat({ isFloating = false }) {
     }
 
     if (normalized.includes('leave')) {
-      return ['📊 Show leave summary for all teams', '📋 Export leave report','📝 View pending leave approvals'];
+      return ['📋 Export leave report','📝 View pending leave approvals','🏠 What’s the Annual Leave  policy?', '🤒 What is the Sick Leave policy?', ' 🏖️ What is the casual Leave policy'];
     }
 
     if (normalized.includes('holiday')) {
       return ['📆 Show me the holiday calendar.', '📅 Is tomorrow a holiday?', '🕊️ How many holidays this year?'];
     }
 
-    // if (normalized.includes('policy')) {
-    //   return ['📘 What’s the dress code policy?', '⏰ What are our working hours?', '🏠 Can I work from home?'];
-    // }
+    if (normalized.includes('late')) {
+      return ['📆 Who came late yesterday'];
+    }
 
     // return ['🤔 Need help with something else?', '💬 Want to ask about policies or leaves?', '🧭 Not sure what to ask? I can suggest!'];
   };
@@ -40,12 +71,12 @@ export default function AskHRChat({ isFloating = false }) {
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages,showTyping]);
 
   const handleSubmit = async (customInput = null) => {
     const question = customInput || input;
     if (!question.trim()) return;
-  
+    setShowTyping(true);
     setLoading(true);
     const userMessage = { role: 'user', content: question };
     setMessages(prev => [...prev, userMessage]);
@@ -75,6 +106,7 @@ export default function AskHRChat({ isFloating = false }) {
   
     setInput('');
     setLoading(false);
+    setShowTyping(false);
   };
   
 
@@ -99,18 +131,102 @@ export default function AskHRChat({ isFloating = false }) {
             </tr>
           </thead>
           <tbody>
-            {data.map((row, idx) => (
-              <tr key={idx}>
-                {headers.map((key, i) => (
-                  <td key={i}>{row[key]}</td>
-                ))}
-              </tr>
-            ))}
+          {data.map((row, idx) => (
+  <tr key={idx}>
+    {headers.map((key, i) => (
+      <td key={i}>
+        {typeof row[key] === 'string' && row[key].match(/^\d{4}-\d{2}-\d{2}T/)
+          ? new Date(row[key]).toLocaleString('en-GB', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false, // You can change this to true if you want a 12-hour format
+            })
+          : row[key]}
+      </td>
+    ))}
+  </tr>
+))}
+
           </tbody>
         </table>
+        <div className="export-buttons">
+  <button onClick={() => exportToExcel(data)} className="export-button">
+    📊 Export to Excel
+  </button>
+  {/* <button onClick={() => exportToPDF(data)} className="export-button">
+    📄 Export to PDF
+  </button> */}
+</div>
+
       </div>
     );
   };
+
+  const exportToExcel = (data) => {
+    // Convert all header keys to uppercase
+    const capitalizedData = data.map(row => {
+      const newRow = {};
+      for (const key in row) {
+        newRow[key.toUpperCase()] = row[key];
+      }
+      return newRow;
+    });
+  
+    const ws = XLSX.utils.json_to_sheet(capitalizedData);
+  
+    // Set column widths
+    const columnWidths = Object.keys(capitalizedData[0]).map(() => ({ wch: 20 }));
+    ws['!cols'] = columnWidths;
+  
+    // Style header row: bold, center, light blue bg
+    const headerKeys = Object.keys(capitalizedData[0]);
+    headerKeys.forEach((key, index) => {
+      const cellRef = XLSX.utils.encode_cell({ r: 0, c: index });
+      if (!ws[cellRef]) return;
+  
+      ws[cellRef].v = key.toUpperCase(); // Capitalize
+      ws[cellRef].s = {
+        font: { bold: true },
+        fill: { fgColor: { rgb: 'D6EAF8' } }, // Light blue
+        alignment: { horizontal: 'center' },
+        border: {
+          top: { style: 'thin', color: { rgb: 'BBBBBB' } },
+          bottom: { style: 'thin', color: { rgb: 'BBBBBB' } },
+          left: { style: 'thin', color: { rgb: 'BBBBBB' } },
+          right: { style: 'thin', color: { rgb: 'BBBBBB' } }
+        }
+      };
+    });
+  
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Table Data');
+    XLSX.writeFile(wb, 'HRbot_data.xlsx', { bookType: 'xlsx', cellStyles: true });
+  };
+  
+  const exportToPDF = (data) => {
+    if (!Array.isArray(data) || data.length === 0) {
+      console.error('Invalid data passed to exportToPDF');
+      return;
+    }
+  
+    const doc = new jsPDF();
+  
+    const headers = Object.keys(data[0]);
+    const tableData = data.map(row => headers.map(header => row[header]));
+  
+    autoTable(doc, {
+      head: [headers],
+      body: tableData,
+      startY: 10, // Starts a little higher now that the title is gone
+    });
+  
+    doc.save('HRbot_data.pdf');
+  };
+  
 
   return (
     <div className="chat-container">
@@ -142,7 +258,7 @@ export default function AskHRChat({ isFloating = false }) {
               className={`message ${msg.role === 'user' ? 'user-message' : 'assistant-message'}`}
             >
               <div className="message-avatar">
-                {msg.role === 'user' ? '🥷🏼' : '🧕🏼'}
+                {msg.role === 'user' ? '👤' : '🤖'}
               </div>
               <div className="message-content">
                 <div className="message-header">
@@ -165,6 +281,7 @@ export default function AskHRChat({ isFloating = false }) {
             </div>
           ))
         )}
+           {showTyping && <TypingIndicator />}
         <div ref={messagesEndRef} />
       </div>
 
@@ -197,11 +314,11 @@ export default function AskHRChat({ isFloating = false }) {
 
         {messages.length > 0 && (
           <button onClick={handleClearChat} className="clear-button" title="Clear conversation">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 6h18"></path>
-              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-            </svg>
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+  <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+</svg>
+
           </button>
         )}
       </div>
@@ -257,6 +374,12 @@ export default function AskHRChat({ isFloating = false }) {
           max-width: 400px;
           line-height: 1.5;
         }
+          .typing-indicator-container { display:flex; gap:1rem; max-width:85%; align-items:center; }
+        .typing-content { background-color:white; border-radius:12px; padding:0.75rem 1rem; box-shadow:0 1px 3px rgba(0,0,0,0.05); }
+        .typing-indicator { display:flex; gap:0.25rem; }
+        .typing-indicator span { width:8px; height:8px; background-color:#9ca3af; border-radius:50%; animation:bounce 1s infinite ease-in-out; }
+        .typing-indicator span:nth-child(2){animation-delay:0.2s} .typing-indicator span:nth-child(3){animation-delay:0.4s}
+        @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
 
         .suggestions {
           display: flex;
@@ -387,18 +510,20 @@ export default function AskHRChat({ isFloating = false }) {
           word-break: break-word;
         }
 
-        .table-container {
-          overflow-x: auto;
-          margin-top: 0.5rem;
-          border-radius: 8px;
-          border: 1px solid #e5e7eb;
-        }
-
-        .data-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 0.85rem;
-        }
+       .table-container {
+  overflow-x: auto;
+  margin-top: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  max-width: 100%;
+  display: block;
+}
+.data-table {
+  width: max-content; /* important */
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
 
         .data-table th {
           background-color: #eff6ff;
@@ -413,6 +538,32 @@ export default function AskHRChat({ isFloating = false }) {
           padding: 0.75rem 1rem;
           border-bottom: 1px solid #e5e7eb;
         }
+.export-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.export-button {
+  background: linear-gradient(135deg, #4f46e5, #3b82f6);
+  color: white;
+  border: none;
+  height: 32px;
+  width: auto;
+  font-size: 0.8rem;
+  padding: 0 12px;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  white-space: nowrap;
+}
+
+.export-button:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #4338ca, #2563eb);
+}
 
         .input-container {
           display: flex;
